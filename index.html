@@ -1,0 +1,820 @@
+import React, { useState, useEffect } from 'react';
+import { Calendar, Clock, RotateCcw, Info, User, Heart, Activity, TrendingUp, Users, Sparkles, AlertTriangle, CheckCircle, Moon, Sun, Star, Briefcase, Coins, Home, Smile, FileText, Zap, Search } from 'lucide-react';
+
+// ==========================================
+// 1. データ・定数定義 (ここから)
+// ==========================================
+
+const JIKKAN = ['甲', '乙', '丙', '丁', '戊', '己', '庚', '辛', '壬', '癸'];
+const JUNISHI = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'];
+const GOGYO_STR = ['木', '火', '土', '金', '水'];
+
+// 十干の詳細属性
+const JIKKAN_ATTR = [
+    { gogyo: 0, inyo: '+', label: '+木' }, { gogyo: 0, inyo: '-', label: '-木' },
+    { gogyo: 1, inyo: '+', label: '+火' }, { gogyo: 1, inyo: '-', label: '-火' },
+    { gogyo: 2, inyo: '+', label: '+土' }, { gogyo: 2, inyo: '-', label: '-土' },
+    { gogyo: 3, inyo: '+', label: '+金' }, { gogyo: 3, inyo: '-', label: '-金' },
+    { gogyo: 4, inyo: '+', label: '+水' }, { gogyo: 4, inyo: '-', label: '-水' },
+];
+
+// 安全なデータ取得ヘルパー
+const getJikkanAttr = (idx) => {
+    if (idx === undefined || idx === null || idx < 0 || idx >= JIKKAN_ATTR.length) {
+        return { gogyo: 0, inyo: '?', label: '-' };
+    }
+    return JIKKAN_ATTR[idx];
+};
+
+// 十二支データ（蔵干含む）
+const JUNISHI_DATA = [
+  { char: '子', gogyo: '水', zokan: ['壬', '', '癸'] },
+  { char: '丑', gogyo: '土', zokan: ['癸', '辛', '己'] },
+  { char: '寅', gogyo: '木', zokan: ['戊', '丙', '甲'] },
+  { char: '卯', gogyo: '木', zokan: ['甲', '', '乙'] },
+  { char: '辰', gogyo: '土', zokan: ['乙', '癸', '戊'] },
+  { char: '巳', gogyo: '火', zokan: ['戊', '庚', '丙'] },
+  { char: '午', gogyo: '火', zokan: ['丙', '己', '丁'] },
+  { char: '未', gogyo: '土', zokan: ['丁', '乙', '己'] },
+  { char: '申', gogyo: '金', zokan: ['戊', '壬', '庚'] },
+  { char: '酉', gogyo: '金', zokan: ['庚', '', '辛'] },
+  { char: '戌', gogyo: '土', zokan: ['辛', '丁', '戊'] },
+  { char: '亥', gogyo: '水', zokan: ['戊', '甲', '壬'] },
+];
+
+const TSUHENSEI = ['比肩', '劫財', '食神', '傷官', '偏財', '正財', '偏官', '正官', '偏印', '印綬'];
+const JYUNIUN = ['長生', '沐浴', '冠帯', '建禄', '帝旺', '衰', '病', '死', '墓', '絶', '胎', '養'];
+
+// 十二運表
+const JYUNIUN_TABLE = [
+  [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 0], // 甲
+  [6, 5, 4, 3, 2, 1, 0, 11, 10, 9, 8, 7], // 乙
+  [10, 11, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9], // 丙
+  [7, 6, 5, 4, 3, 2, 1, 0, 11, 10, 9, 8], // 丁
+  [10, 11, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9], // 戊
+  [7, 6, 5, 4, 3, 2, 1, 0, 11, 10, 9, 8], // 己
+  [7, 8, 9, 10, 11, 0, 1, 2, 3, 4, 5, 6], // 庚
+  [0, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1], // 辛
+  [4, 5, 6, 7, 8, 9, 10, 11, 0, 1, 2, 3], // 壬
+  [1, 0, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2], // 癸
+];
+
+const KUBOU_GROUP = {
+  0: { label: '戌亥', shi: [10, 11] }, 
+  2: { label: '申酉', shi: [8, 9] }, 
+  4: { label: '午未', shi: [6, 7] }, 
+  6: { label: '辰巳', shi: [4, 5] }, 
+  8: { label: '寅卯', shi: [2, 3] }, 
+  10: { label: '子丑', shi: [0, 1] }
+};
+
+const KUBOU_ADVICE = {
+    '戌亥': '現実よりも精神世界や芸術に向く時期。目上の助けは期待せず自力で切り開く運気。',
+    '申酉': '行動力抜群だが、家庭や休息がおろそかになりがち。忙しく動き回ることで開運。',
+    '午未': '目下や子供との縁が薄いか、苦労しやすい。知性で人生を渡り歩くタイプ。',
+    '辰巳': '現実的でたくましいが、親兄弟との縁が薄い傾向。自立心旺盛で独自の道を歩む。',
+    '寅卯': 'エネルギッシュで社交的だが、家庭やプライベートで安らぎを得にくい。外で活躍する。',
+    '子丑': '目上や親との縁が薄いが、自分で新しい家系を作る初代運。コツコツ努力型。'
+};
+
+const NATURE_INFO = {
+  0: { nature: '大樹', title: '向上心の塊', desc: '曲がったことが嫌いで、真っ直ぐに伸びようとする向上心を持っています。責任感が強くリーダー向きですが、頑固な一面も。' },
+  1: { nature: '草花', title: '柔軟で粘り強い', desc: '踏まれても立ち上がる雑草のように、芯が強く忍耐強い性格です。協調性があり、周囲に合わせて柔軟に対応できます。' },
+  2: { nature: '太陽', title: '明るく情熱的', desc: 'そこにいるだけで場を明るくする太陽のような存在。裏表がなく開放的で、カリスマ性があります。' },
+  3: { nature: '灯火', title: '繊細な情熱家', desc: 'ロウソクの火のように揺らめく繊細な感性と、鋭い洞察力を持っています。内面に激しい情熱を秘めています。' },
+  4: { nature: '山岳', title: '圧倒的な包容力', desc: '動かざること山の如し。圧倒的な存在感と包容力があり、多くの人が集まってきます。信頼厚い人物です。' },
+  5: { nature: '大地', title: '多才な育成者', desc: '畑の土のように、様々な作物を育てることができる多才な人です。庶民的で親しみやすく、人を育てるのが得意です。' },
+  6: { nature: '鋼鉄', title: '鋭い改革者', desc: '鍛えられた鋼のように強靭な精神力と、即断即決の行動力を持っています。白黒はっきりさせたい正義漢です。' },
+  7: { nature: '宝石', title: '美意識と品格', desc: '磨けば光る宝石のように、高い美意識とプライドを持っています。繊細で傷つきやすいですが、試練を経て輝きます。' },
+  8: { nature: '海', title: '自由奔放', desc: '全ての川を受け入れる海のように、清濁併せ呑む度量があります。知恵が深く、流動的で自由を愛します。' },
+  9: { nature: '雨露', title: '慈愛と知性', desc: '大地を潤す雨のように、慈愛に満ちており、静かに浸透していく忍耐力と知恵を持っています。' }
+};
+
+const SOCIAL_TYPE = {
+  '比肩': { desc: 'マイペースな職人肌。一匹狼で我が道を行くタイプ。', job: 'フリーランス、職人、自営業', action: '個の力を磨き、妥協しないこと' },
+  '劫財': { desc: '社交的だが内面は強気。組織を作って目的を達成する策士。', job: '経営者、政治家、リーダー', action: '仲間を集め、大きな目標を掲げること' },
+  '食神': { desc: 'おおらかで遊び心満載。衣食住に困らない人気者タイプ。', job: '飲食、エンタメ、接客', action: '衣食住を楽しみ、笑顔で過ごすこと' },
+  '傷官': { desc: '感受性が鋭く頭の回転が速い。技術や芸術の才能あり。', job: 'クリエイター、技術者、専門家', action: '専門スキルや資格を極めること' },
+  '偏財': { desc: 'サービス精神旺盛で商売上手。多趣味で人脈が広い。', job: '営業、商社、流通', action: '人脈を広げ、多くの人と交流すること' },
+  '正財': { desc: '真面目で堅実。コツコツと信用と財を積み上げる。', job: '銀行、経理、公務員', action: '信用を積み重ね、計画的に進めること' },
+  '偏官': { desc: '行動力抜群の親分肌。考えるより先に体が動く。', job: '警察、スポーツ、営業', action: '迷わず行動し、体を動かすこと' },
+  '正官': { desc: '責任感が強く几帳面。ルールを守る優等生リーダー。', job: '公務員、管理職、事務', action: '品格を持ち、社会的な役割を果たすこと' },
+  '偏印': { desc: '知的好奇心旺盛でユニーク。常識にとらわれない発想。', job: 'IT、占い、研究、海外', action: '新しい知識を学び、常識を疑うこと' },
+  '印綬': { desc: '学問好きで理知的。母性本能が強く教えるのが得意。', job: '教師、研究者、作家', action: '教養を深め、人に教え伝えること' },
+};
+
+const HEALTH_ADVICE = [
+  { part: '肝臓・目・神経', taste: '酸味', food: '梅干し、酢の物' },
+  { part: '心臓・血圧', taste: '苦味', food: 'ゴーヤ、コーヒー' },
+  { part: '胃腸', taste: '甘味', food: 'かぼちゃ、芋類' },
+  { part: '肺・呼吸器', taste: '辛味', food: '生姜、ネギ' },
+  { part: '腎臓・婦人科', taste: '鹹味', food: '海藻、黒豆' }
+];
+
+const FORTUNE_CYCLE = {
+    0: { label: '天中殺', icon: '★', desc: '休息' },
+    1: { label: '天中殺', icon: '★', desc: '休息' },
+    2: { label: '目覚め', icon: '○', desc: '開始' },
+    3: { label: '成長', icon: '○', desc: '発展' },
+    4: { label: '選定', icon: '○', desc: '決断' },
+    5: { label: '小休止', icon: '△', desc: '健康' },
+    6: { label: '広がり', icon: '○', desc: '人気' },
+    7: { label: '空回り', icon: '△', desc: '葛藤' },
+    8: { label: '追い風', icon: '◎', desc: '好機' },
+    9: { label: '実り', icon: '◎', desc: '金運' },
+    10: { label: '収穫', icon: '◎', desc: '充実' },
+    11: { label: '蓄え', icon: '☆', desc: '準備' },
+};
+
+const ZODIAC_RELATIONS = {
+    shigo: { 0:1, 1:0, 2:11, 11:2, 3:10, 10:3, 4:9, 9:4, 5:8, 8:5, 6:7, 7:6 },
+    chu: { 0:6, 6:0, 1:7, 7:1, 2:8, 8:2, 3:9, 9:3, 4:10, 10:4, 5:11, 11:5 },
+    sango: { 0: [4, 8], 4: [0, 8], 8: [0, 4], 3: [7, 11], 7: [3, 11], 11: [3, 7], 6: [2, 10], 2: [6, 10], 10: [2, 6], 9: [1, 5], 1: [9, 5], 5: [1, 9] }
+};
+
+const ZOKAN_MAIN = ['癸', '己', '甲', '乙', '戊', '丙', '丁', '己', '庚', '辛', '戊', '壬'];
+
+// ==========================================
+// 2. 計算ロジック関数
+// ==========================================
+
+const getSolarTermDay = (year, month) => {
+  const termDays = [6, 4, 6, 5, 6, 6, 7, 8, 8, 8, 8, 7];
+  return termDays[month - 1] || 1; 
+};
+
+const getGanshiIndex = (year, month, day, type = 'day') => {
+  if (isNaN(year) || isNaN(month) || isNaN(day)) return type === 'month' ? {kan:0, shi:0, kanIdx:0} : 0;
+
+  if (type === 'year') {
+    const isBeforeSetsuiri = (month < 2) || (month === 2 && day < getSolarTermDay(year, 2));
+    const targetYear = isBeforeSetsuiri ? year - 1 : year;
+    let idx = (targetYear - 1984) % 60;
+    if (idx < 0) idx += 60;
+    return idx;
+  }
+  if (type === 'month') {
+    const setsuiriDay = getSolarTermDay(year, month);
+    const isBeforeSetsuiri = day < setsuiriDay;
+    let calcMonth = month;
+    let calcYear = year;
+    if (isBeforeSetsuiri) {
+      calcMonth = month - 1;
+      if (calcMonth === 0) { calcMonth = 12; calcYear = year - 1; }
+    }
+    let monthShi = calcMonth % 12;
+    if (monthShi === 0) monthShi = 0; else if (monthShi === 1) monthShi = 1; else monthShi = calcMonth;
+    
+    const yearIdx = getGanshiIndex(calcYear, 1, 1, 'year');
+    const yearKan = yearIdx % 10;
+    const startMonthKan = ((yearKan % 5) * 2 + 2) % 10;
+    let monthOffset = calcMonth >= 2 ? calcMonth - 2 : 10 + calcMonth;
+    const monthKan = (startMonthKan + monthOffset) % 10;
+    
+    return { kan: monthKan, shi: monthShi === 12 ? 0 : (monthShi === 1 ? 1 : monthShi), kanIdx: monthKan };
+  }
+  if (type === 'day') {
+    const baseDate = new Date(1900, 0, 1);
+    const targetDate = new Date(year, month - 1, day);
+    const diffDays = Math.round((targetDate - baseDate) / (1000 * 60 * 60 * 24));
+    let idx = (10 + diffDays) % 60;
+    if (idx < 0) idx += 60;
+    return idx;
+  }
+  return 0;
+};
+
+const getTsuhensei = (targetKan, dayKan) => {
+  if(targetKan == null || dayKan == null) return '-';
+  const dElem = Math.floor(dayKan / 2);
+  const tElem = Math.floor(targetKan / 2);
+  const samePol = (dayKan % 2) === (targetKan % 2);
+  const rel = (tElem - dElem + 5) % 5;
+  let idx = 0;
+  if (rel === 0) idx = samePol ? 0 : 1;
+  else if (rel === 1) idx = samePol ? 2 : 3;
+  else if (rel === 2) idx = samePol ? 4 : 5;
+  else if (rel === 3) idx = samePol ? 6 : 7;
+  else if (rel === 4) idx = samePol ? 8 : 9;
+  return TSUHENSEI[idx] || '-';
+};
+
+const getJyuniun = (dayKan, shiIdx) => {
+    if(dayKan == null || shiIdx == null) return '-';
+    const row = JYUNIUN_TABLE[dayKan];
+    if(!row) return '-';
+    return JYUNIUN[row[shiIdx]] || '-';
+};
+
+const getKubou = (dayKan, dayShi) => {
+  if(dayKan == null || dayShi == null) return { label: '-', shi: [] };
+  let diff = dayShi - dayKan;
+  if (diff < 0) diff += 12;
+  const group = KUBOU_GROUP[diff];
+  return group ? { label: group.label, shi: group.shi } : { label: '-', shi: [] };
+};
+
+const checkTenkokuChichu = (targetKan, targetShi, dayKan, dayShi) => {
+    if(targetKan == null || targetShi == null || dayKan == null || dayShi == null) return false;
+    const dElem = Math.floor(dayKan/2);
+    const tElem = Math.floor(targetKan/2);
+    const rel = (tElem - dElem + 5) % 5;
+    const isConflict = (rel === 2 || rel === 3);
+    const isSamePolarity = (dayKan % 2) === (targetKan % 2);
+    const isTenkoku = isConflict && isSamePolarity;
+    const isChichu = Math.abs(dayShi - targetShi) === 6;
+    return isTenkoku && isChichu;
+};
+
+const calculateTaiun = (year, month, day, gender, yearKanIndex, monthKan, monthShi) => {
+  if (isNaN(year) || isNaN(month) || isNaN(day)) return { startAge: 0, startMonthStr: '', list: [] };
+
+  const isYearYang = yearKanIndex % 2 === 0;
+  const isMale = gender === 'male';
+  const isForward = (isYearYang && isMale) || (!isYearYang && !isMale); 
+  
+  const currentSetsuiriDay = getSolarTermDay(year, month);
+  let daysDiff = 0;
+  
+  if (isForward) {
+    if (day < currentSetsuiriDay) {
+      daysDiff = currentSetsuiriDay - day;
+    } else {
+      const daysInMonth = new Date(year, month, 0).getDate();
+      const nextMonthSetsuiri = getSolarTermDay(year, month === 12 ? 1 : month + 1);
+      daysDiff = (daysInMonth - day) + nextMonthSetsuiri;
+    }
+  } else {
+    if (day >= currentSetsuiriDay) {
+      daysDiff = day - currentSetsuiriDay;
+    } else {
+      const prevMonth = month === 1 ? 12 : month - 1;
+      const prevYear = month === 1 ? year - 1 : year;
+      const prevSetsuiri = getSolarTermDay(prevYear, prevMonth);
+      const daysInPrevMonth = new Date(prevYear, prevMonth, 0).getDate();
+      daysDiff = (daysInPrevMonth - prevSetsuiri) + day;
+    }
+  }
+  
+  const startAge = Math.floor(daysDiff / 3);
+  const startMonthStr = Math.floor((daysDiff % 3) * 4) + "カ月";
+
+  let taiunList = [];
+  let currKan = monthKan;
+  let currShi = monthShi;
+  
+  for (let i = 0; i < 10; i++) {
+    const age = startAge + (i * 10);
+    if (isForward) {
+      currKan = (currKan + 1) % 10;
+      currShi = (currShi + 1) % 12;
+    } else {
+      currKan = (currKan - 1 + 10) % 10;
+      currShi = (currShi - 1 + 12) % 12;
+    }
+    taiunList.push({
+      age: age,
+      kan: currKan,
+      shi: currShi,
+      ganshi: JIKKAN[currKan] + JUNISHI[currShi]
+    });
+  }
+  
+  return { isForward, startAge, startMonthStr, list: taiunList };
+};
+
+const getFortuneCycle = (targetShi, kubouShiList) => {
+    if (!kubouShiList || kubouShiList.length === 0) return FORTUNE_CYCLE[0];
+    const baseShi = kubouShiList[0];
+    let diff = targetShi - baseShi;
+    if (diff < 0) diff += 12;
+    return FORTUNE_CYCLE[diff];
+};
+
+const getCompatibilityAdvice = (p1, p2) => {
+  if(!p1 || !p2) return {};
+  const k1 = p1.day.kanIdx; 
+  const s1 = p1.day.id % 12; 
+  const k2 = p2.day.kanIdx;
+  const s2 = p2.day.id % 12;
+  
+  const e1 = Math.floor(k1 / 2);
+  const e2 = Math.floor(k2 / 2);
+  const rel = (e2 - e1 + 5) % 5;
+  
+  const isKango = Math.abs(k1 - k2) === 5;
+  const isSameKubou = p1.kubou.label === p2.kubou.label;
+  const isShigo = ZODIAC_RELATIONS.shigo[s1] === s2;
+  const isSango = ZODIAC_RELATIONS.sango[s1]?.includes(s2);
+  const isChu = ZODIAC_RELATIONS.chu[s1] === s2;
+  
+  let score = 3;
+  let title = "";
+  let desc = "";
+  let advice = "";
+  let trouble = "";
+  
+  if (isKango && isShigo) {
+    score = 5; title = "天地徳合"; desc = "天と地が結びつく最高の相性。"; advice = "離れがたい運命的な絆です。"; trouble = "二人の世界に没入しすぎないように。";
+  } else if (isShigo) {
+    score = 4.5; title = "支合（肉体的な相性）"; desc = "一緒にいて落ち着く、現実的な相性が抜群です。"; advice = "結婚や同棲に最適です。"; trouble = "マンネリ化に注意。";
+  } else if (isKango) {
+    score = 4.5; title = "干合（精神的な相性）"; desc = "精神的に強烈に惹かれ合います。"; advice = "違いを認め合うことで成長できます。"; trouble = "感情の起伏が激しくなりがち。";
+  } else if (isSameKubou) {
+    score = 4; title = "同一空亡"; desc = "運気のバイオリズムが同じソウルメイト。"; advice = "共通の目標を持つと最強です。"; trouble = "共倒れに注意。";
+  } else if (isChu) {
+    score = 2; title = "冲（衝突）"; desc = "自分と正反対の性質を持ち、刺激的だが衝突しやすい。"; advice = "適度な距離感を保つことが重要。"; trouble = "価値観の違いによる衝突。";
+  } else {
+    if(rel === 0) { score = 4; title = "比和"; desc = "似た者同士"; advice = "親しき仲にも礼儀あり"; trouble = "ライバル心"; }
+    else if(rel === 1 || rel === 4) { score = 4.5; title = "相生"; desc = "助け合う関係"; advice = "感謝を忘れずに"; trouble = "甘えすぎ"; }
+    else { score = 3; title = "相剋"; desc = "刺激し合う関係"; advice = "相手を尊重する"; trouble = "反発"; }
+  }
+  return { score, title, desc, advice, trouble, isShigo, isSango, isChu };
+};
+
+const generateFortuneComment = (data) => {
+    if(!data) return '';
+    const { name } = data.meta;
+    const { nature, social } = data.diagnosis;
+    const { kubou } = data;
+    const socialData = SOCIAL_TYPE[data.diagnosis.mainStar] || { desc: '', job: '', action: '' };
+    const natureData = nature || { nature: '-', desc: '-' };
+    
+    let comment = `【${name}様の総合鑑定書】\n\n`;
+    comment += `あなたの本質は、自然界で例えると『${natureData.nature}』です。${natureData.desc}\n\n`;
+    comment += `中心星は『${data.diagnosis.mainStar}』です。\n${socialData.desc}\n`;
+    comment += `向いている職業: ${socialData.job}\n\n`;
+    comment += `運命のサイクル: 『${kubou.label}天中殺』\n${KUBOU_ADVICE[kubou.label] || ''}`;
+    
+    return comment;
+};
+
+// ==========================================
+// 3. UIコンポーネント (ここから)
+// ==========================================
+
+const StarIcon = ({ filled, half }) => (
+    <Heart className={`w-5 h-5 ${filled ? 'text-pink-500 fill-pink-500' : half ? 'text-pink-500 fill-pink-200' : 'text-gray-300'}`} />
+);
+
+const DateSelect = ({ value, onChange }) => {
+    const date = new Date(value);
+    const currentYear = isNaN(date.getFullYear()) ? 1980 : date.getFullYear();
+    const currentMonth = isNaN(date.getMonth()) ? 1 : date.getMonth() + 1;
+    const currentDay = isNaN(date.getDate()) ? 1 : date.getDate();
+
+    const years = Array.from({ length: 120 }, (_, i) => new Date().getFullYear() - 100 + i); 
+    const months = Array.from({ length: 12 }, (_, i) => i + 1);
+    const daysInMonth = new Date(currentYear, currentMonth, 0).getDate();
+    const days = Array.from({ length: daysInMonth || 31 }, (_, i) => i + 1);
+
+    const handleChange = (type, val) => {
+        const d = new Date(value);
+        let y = d.getFullYear();
+        let m = d.getMonth() + 1;
+        let day = d.getDate();
+        
+        if (isNaN(y)) y = 1980;
+        if (isNaN(m)) m = 1;
+        if (isNaN(day)) day = 1;
+
+        if (type === 'year') y = val;
+        if (type === 'month') m = val;
+        if (type === 'day') day = val;
+        
+        const mStr = String(m).padStart(2, '0');
+        const dStr = String(day).padStart(2, '0');
+        onChange(`${y}-${mStr}-${dStr}`);
+    };
+
+    return (
+        <div className="flex gap-1 flex-1">
+            <select value={currentYear} onChange={(e) => handleChange('year', Number(e.target.value))} className="bg-white border rounded px-2 py-2 text-sm w-24">{years.map(y => <option key={y} value={y}>{y}年</option>)}</select>
+            <select value={currentMonth} onChange={(e) => handleChange('month', Number(e.target.value))} className="bg-white border rounded px-2 py-2 text-sm w-16">{months.map(m => <option key={m} value={m}>{m}月</option>)}</select>
+            <select value={currentDay} onChange={(e) => handleChange('day', Number(e.target.value))} className="bg-white border rounded px-2 py-2 text-sm w-16">{days.map(d => <option key={d} value={d}>{d}日</option>)}</select>
+        </div>
+    );
+};
+
+const DetailedChart = ({ data }) => {
+    // 安全なデータ取得のためのヘルパー
+    const getJ = (idx) => getJikkanAttr(idx);
+    const getG = (idx) => GOGYO_STR[Math.floor(idx/2)] || '-';
+
+    return (
+    <div className="w-full bg-white shadow-sm border border-gray-200 overflow-hidden mb-6 rounded">
+       <div className="bg-emerald-50 p-2 border-b border-gray-200 text-center">
+            <h3 className="font-bold text-gray-800 text-lg">{data.meta.name}さんの命式</h3>
+            <p className="text-xs text-gray-500">{data.meta.birthDate} / {data.meta.gender === 'male' ? '男性' : '女性'}</p>
+       </div>
+       <div className="overflow-x-auto">
+        <table className="w-full text-center text-sm border-collapse min-w-[500px]">
+            <thead className="bg-gray-50 text-gray-600">
+                <tr>
+                    <th className="p-2 border border-gray-300 w-1/6 bg-amber-50">天中殺</th>
+                    <th className="p-2 border border-gray-300 w-1/6">日柱</th>
+                    <th className="p-2 border border-gray-300 w-1/6">月柱</th>
+                    <th className="p-2 border border-gray-300 w-1/6">年柱</th>
+                    <th className="p-2 border border-gray-300 w-1/6 bg-gray-100">項目</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td rowSpan="2" className="border border-gray-300 bg-white font-bold text-gray-700 text-lg align-middle">{data.kubou.label}<div className="text-xs font-normal text-gray-400">天中殺</div></td>
+                    <td className="p-2 border border-gray-300 align-top">
+                        <div className="text-xs text-gray-400 flex justify-between"><span>{getJ(data.day.kanIdx).label}</span><span>{getG(data.day.shi)}</span></div>
+                        <div className="text-xl font-bold py-1">{JIKKAN[data.day.kanIdx]}{JUNISHI[data.day.shi]}</div>
+                        <div className="text-xs text-gray-400">{data.day.id}</div>
+                    </td>
+                    <td className="p-2 border border-gray-300 align-top">
+                        <div className="text-xs text-gray-400 flex justify-between"><span>{getJ(data.month.kanIdx).label}</span><span></span></div>
+                        <div className="text-xl font-bold py-1">{JIKKAN[data.month.kanIdx]}{JUNISHI[data.month.shi]}</div>
+                        <div className="text-xs text-gray-400">{data.month.id}</div>
+                    </td>
+                    <td className="p-2 border border-gray-300 align-top">
+                        <div className="text-xs text-gray-400 flex justify-between"><span>{getJ(data.year.kanIdx).label}</span><span></span></div>
+                        <div className="text-xl font-bold py-1">{JIKKAN[data.year.kanIdx]}{JUNISHI[data.year.shi]}</div>
+                        <div className="text-xs text-gray-400">{data.year.id}</div>
+                    </td>
+                    <td className="p-2 border border-gray-300 bg-gray-50 text-xs align-middle">干支</td>
+                </tr>
+                <tr>
+                    <td className="p-2 border border-gray-300 text-gray-600">{data.day.zokan}</td>
+                    <td className="p-2 border border-gray-300 text-gray-600">{data.month.zokan}</td>
+                    <td className="p-2 border border-gray-300 text-gray-600">{data.year.zokan}</td>
+                    <td className="p-2 border border-gray-300 bg-gray-50 text-xs">蔵干</td>
+                </tr>
+                <tr>
+                    <td rowSpan="4" className="border border-gray-300 bg-white"></td>
+                    <td className="p-2 border border-gray-300 text-gray-300">-</td>
+                    <td className="p-2 border border-gray-300 font-medium">{data.month.tsuhen}</td>
+                    <td className="p-2 border border-gray-300 font-medium">{data.year.tsuhen}</td>
+                    <td className="p-2 border border-gray-300 bg-gray-50 text-xs">通変星</td>
+                </tr>
+                <tr>
+                    <td className="p-2 border border-gray-300 font-bold text-amber-700 bg-amber-50">{data.day.zokanTsuhen}</td>
+                    <td className="p-2 border border-gray-300 font-bold text-amber-700 bg-amber-50">{data.month.zokanTsuhen}</td>
+                    <td className="p-2 border border-gray-300 font-medium">{data.year.zokanTsuhen}</td>
+                    <td className="p-2 border border-gray-300 bg-gray-50 text-xs">蔵干通変</td>
+                </tr>
+                <tr>
+                    <td className="p-2 border border-gray-300 text-gray-600">{data.day.jyuniun}</td>
+                    <td className="p-2 border border-gray-300 text-gray-600">{data.month.jyuniun}</td>
+                    <td className="p-2 border border-gray-300 text-gray-600">{data.year.jyuniun}</td>
+                    <td className="p-2 border border-gray-300 bg-gray-50 text-xs">十二運</td>
+                </tr>
+            </tbody>
+        </table>
+       </div>
+    </div>
+    );
+};
+
+const TaiunTable = ({ data }) => (
+    <div className="w-full bg-white shadow-sm border border-gray-200 overflow-hidden mb-6 rounded">
+        <div className="bg-gray-50 p-2 border-b border-gray-200 text-center">
+            <h3 className="font-bold text-gray-800">大運 (10年ごとの運勢)</h3>
+            <p className="text-xs text-gray-500">立運: {data.taiun.startAge}歳 {data.taiun.startMonthStr} ({data.taiun.isForward ? '順行' : '逆行'})</p>
+        </div>
+        <div className="overflow-x-auto">
+            <table className="w-full text-center text-sm border-collapse min-w-[500px]">
+                <thead className="bg-amber-50 text-gray-700">
+                    <tr><th className="p-2 border border-gray-300">年齢</th><th className="p-2 border border-gray-300">干支</th><th className="p-2 border border-gray-300">通変星</th><th className="p-2 border border-gray-300">十二運</th><th className="p-2 border border-gray-300">関係</th></tr>
+                </thead>
+                <tbody>
+                    {data.taiun.list.map((row, i) => (
+                        <tr key={i} className={checkTenkokuChichu(row.kan, row.shi, data.day.kanIdx, data.day.id % 12) ? "bg-red-50" : data.kubou.shi.includes(row.shi) ? "bg-gray-50 text-gray-500" : ""}>
+                            <td className="p-2 border border-gray-300">{row.age}歳~</td>
+                            <td className="p-2 border border-gray-300 font-bold">{JIKKAN[row.kan]}{JUNISHI[row.shi]}</td>
+                            <td className="p-2 border border-gray-300">{getTsuhensei(row.kan, data.day.kanIdx)}</td>
+                            <td className="p-2 border border-gray-300">{getJyuniun(data.day.kanIdx, row.shi)}</td>
+                            <td className="p-2 border border-gray-300 text-xs text-red-500">
+                                {checkTenkokuChichu(row.kan, row.shi, data.day.kanIdx, data.day.id % 12) ? "破壊" : data.kubou.shi.includes(row.shi) ? "天中殺" : ""}
+                            </td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        </div>
+    </div>
+);
+
+const LuckCycleTable = ({ data, type = 'year' }) => {
+    const currentYear = new Date().getFullYear();
+    const rows = [];
+    const count = 12;
+    const startOffset = type === 'year' ? -3 : 0; 
+
+    for(let i = 0; i < count; i++) {
+        let label = '', kan, shi;
+        if (type === 'year') {
+            const y = currentYear + startOffset + i;
+            label = `${y}年`;
+            const idx = getGanshiIndex(y, 1, 1, 'year');
+            kan = idx % 10;
+            shi = idx % 12;
+        } else {
+            const m = i + 1;
+            label = `${m}月`;
+            const mObj = getGanshiIndex(currentYear, m, 15, 'month');
+            kan = mObj.kan;
+            shi = mObj.shi;
+        }
+        
+        const isTenkoku = checkTenkokuChichu(kan, shi, data.day.kanIdx, data.day.id % 12);
+        const isKubou = data.kubou.shi.includes(shi);
+        let rels = [];
+        if(isTenkoku) rels.push('破壊');
+        if(isKubou) rels.push('天中殺');
+        else if(ZODIAC_RELATIONS.shigo[data.day.id%12] === shi) rels.push('支合');
+        
+        const cycle = FORTUNE_CYCLE[(shi - data.kubou.shi[0] + 12) % 12] || FORTUNE_CYCLE[0];
+
+        rows.push({ label, kan, shi, cycle, rels: rels.join(' '), isTenkoku, isKubou });
+    }
+
+    return (
+        <div className="w-full bg-white shadow-sm border border-gray-200 overflow-hidden mb-6 rounded">
+            <div className="bg-gray-50 p-2 border-b border-gray-200 text-center">
+                <h3 className="font-bold text-gray-800">{type === 'year' ? '年運' : '月運'}</h3>
+            </div>
+            <div className="overflow-x-auto">
+                <table className="w-full text-center text-sm border-collapse min-w-[500px]">
+                    <thead className="bg-emerald-50 text-gray-700">
+                        <tr>
+                            <th className="p-2 border border-gray-300 w-16">{type === 'year' ? '年' : '月'}</th>
+                            <th className="p-2 border border-gray-300 w-16">運気</th>
+                            <th className="p-2 border border-gray-300">キーワード</th>
+                            <th className="p-2 border border-gray-300">干支</th>
+                            <th className="p-2 border border-gray-300">通変星</th>
+                            <th className="p-2 border border-gray-300">十二運</th>
+                            <th className="p-2 border border-gray-300 text-xs">関係</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {rows.map((row, i) => (
+                            <tr key={i} className={row.isTenkoku ? "bg-red-50 font-bold" : row.isKubou ? "bg-gray-50 text-gray-500" : ""}>
+                                <td className="p-2 border border-gray-300">{row.label}</td>
+                                <td className="p-2 border border-gray-300 font-bold">{row.cycle.icon}</td>
+                                <td className="p-2 border border-gray-300 text-left px-4">{row.cycle.label} <span className="text-xs text-gray-400">({row.cycle.desc})</span></td>
+                                <td className="p-2 border border-gray-300 font-serif">{JIKKAN[row.kan]}{JUNISHI[row.shi]}</td>
+                                <td className="p-2 border border-gray-300">{getTsuhensei(row.kan, data.day.kanIdx)}</td>
+                                <td className="p-2 border border-gray-300">{getJyuniun(data.day.kanIdx, row.shi)}</td>
+                                <td className="p-2 border border-gray-300 text-xs text-red-500">{row.rels}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    );
+};
+
+const CosmicDisc = ({ p1, p2 }) => {
+  const getCoord = (id, radius = 80, cx = 100, cy = 100) => {
+    const angle = (90 + (id - 1) * 6) * (Math.PI / 180);
+    return { x: cx + radius * Math.cos(angle), y: cy + radius * Math.sin(angle) };
+  };
+  const createPath = (data, color) => {
+    const pY = getCoord(data.year.id);
+    const pM = getCoord(data.month.id);
+    const pD = getCoord(data.day.id);
+    return <path d={`M ${pD.x} ${pD.y} L ${pM.x} ${pM.y} L ${pY.x} ${pY.y} Z`} fill={color} fillOpacity="0.4" stroke={color} strokeWidth="2" />;
+  };
+  return (
+    <div className="flex flex-col items-center">
+        <div className="relative w-64 h-64">
+            <svg viewBox="0 0 200 200" className="w-full h-full">
+                <circle cx="100" cy="100" r="80" fill="none" stroke="#ddd" />
+                <line x1="100" y1="20" x2="100" y2="180" stroke="#eee" />
+                <line x1="20" y1="100" x2="180" y2="100" stroke="#eee" />
+                {createPath(p1, "#3b82f6")}
+                {p2 && createPath(p2, "#ec4899")}
+            </svg>
+        </div>
+        <div className="text-xs text-gray-500 mt-2 text-center">
+            <p><span className="inline-block w-3 h-3 bg-blue-500 opacity-50 mr-1"></span>{p1.meta.name}</p>
+            {p2 && <p><span className="inline-block w-3 h-3 bg-pink-500 opacity-50 mr-1"></span>{p2.meta.name}</p>}
+        </div>
+    </div>
+  );
+};
+
+const DateRecommendation = ({ p1, p2 }) => {
+    const today = new Date();
+    const recommendations = [];
+    const s1 = p1.day.id % 12;
+    const k1 = p1.day.kanIdx;
+    
+    for (let i = 0; i < 45; i++) {
+        const d = new Date(today);
+        d.setDate(today.getDate() + i);
+        const y = d.getFullYear();
+        const m = d.getMonth() + 1;
+        const day = d.getDate();
+        const idx = getGanshiIndex(y, m, day, 'day');
+        const dK = idx % 10;
+        const dS = idx % 12;
+        let score = 0;
+        let reasons = [];
+        
+        if(ZODIAC_RELATIONS.shigo[s1] === dS) { score+=3; reasons.push('支合'); }
+        if(Math.abs(k1 - dK) === 5) { score+=2; reasons.push('干合'); }
+        if(p1.kubou.shi.includes(dS)) score-=5;
+
+        if (score >= 3) {
+            recommendations.push({ date: `${m}/${day}`, ganshi: JIKKAN[dK]+JUNISHI[dS], score, reasons });
+        }
+    }
+    const topDays = recommendations.sort((a,b) => b.score - a.score).slice(0, 5);
+
+    return (
+        <div className="rounded-xl p-6 border bg-pink-50 border-pink-100">
+            <h3 className="font-bold text-lg text-pink-600 mb-4 flex items-center"><Heart className="w-5 h-5 mr-2"/>デート日和</h3>
+            <div className="space-y-3">
+                {topDays.map((d,i)=>(
+                    <div key={i} className="bg-white p-3 rounded flex justify-between items-center shadow-sm">
+                        <div className="font-bold text-lg text-pink-800 bg-pink-100 px-2 rounded">{d.date}</div>
+                        <div className="text-sm text-gray-600">{d.ganshi}の日 <span className="text-xs text-gray-400">{d.reasons.join(',')}</span></div>
+                        <div className="flex">{[...Array(Math.min(3, Math.floor(d.score/2)))].map((_,k)=><StarIcon key={k} filled />)}</div>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+};
+
+const DiagnosisCard = ({ data }) => {
+    const aiComment = generateFortuneComment(data);
+    const social = SOCIAL_TYPE[data.diagnosis.mainStar] || { desc: '', job: '', action: '' };
+    return (
+    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+        <div className="flex items-center mb-4"><Sparkles className="text-amber-500 w-5 h-5 mr-2" /><h3 className="text-lg font-bold text-gray-800">{data.meta.name}様の総合鑑定</h3></div>
+        <div className="bg-gray-50 p-6 rounded mb-6 text-sm leading-relaxed text-gray-700">
+            <div className="whitespace-pre-wrap mb-4">{aiComment}</div>
+            <p className="mb-2 font-bold text-emerald-700">【社会運・適職】 {data.diagnosis.mainStar}</p>
+            <p className="mb-2">{social.desc}</p>
+            <p className="mb-4 text-xs bg-white p-2 rounded border border-gray-200">適職: {social.job}</p>
+            <p className="font-bold text-red-500">★開運アクション: {social.action}</p>
+        </div>
+    </div>
+    );
+};
+
+const CompatibilityReport = ({ r1, r2 }) => {
+    const comp = getCompatibilityAdvice(r1, r2);
+    return (
+    <div className="space-y-6">
+        <div className="bg-gradient-to-r from-pink-50 to-white rounded-xl shadow-sm border border-pink-100 p-6 text-center">
+            <h3 className="text-pink-800 font-bold mb-2 flex items-center justify-center"><Heart className="w-5 h-5 mr-2"/>相性診断</h3>
+            <div className="flex justify-center mb-2">{[...Array(5)].map((_, i) => <StarIcon key={i} filled={i < Math.floor(comp.score)} />)}</div>
+            <h2 className="text-2xl font-bold text-gray-800 mb-2">{comp.title}</h2>
+            <p className="text-gray-600 text-sm mb-4">{comp.desc}</p>
+            <div className="text-left bg-white p-4 rounded text-sm text-gray-600">
+                <p className="mb-2"><strong>アドバイス:</strong> {comp.advice}</p>
+                <p><strong>注意点:</strong> {comp.trouble}</p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                <div className="bg-white p-4 rounded shadow-sm"><h4 className="font-bold mb-2">宇宙盤</h4><CosmicDisc p1={r1} p2={r2} /></div>
+                <DateRecommendation p1={r1} p2={r2} />
+            </div>
+        </div>
+    </div>
+    );
+};
+
+const HealthTable = ({ data }) => (
+    <div className="bg-white rounded-lg shadow border border-gray-200 p-4">
+         <h3 className="text-lg font-bold text-emerald-800 mb-4 flex items-center"><Activity className="mr-2 h-5 w-5"/>健康運</h3>
+         <table className="w-full text-sm border-collapse">
+            <thead className="bg-gray-100 text-gray-600"><tr><th className="p-2 border">五行</th><th className="p-2 border">数</th><th className="p-2 border">部位</th><th className="p-2 border">食</th></tr></thead>
+            <tbody>
+                {GOGYO_STR.map((elm, i) => (
+                    <tr key={i}><td className="p-2 border text-center font-bold">{elm}</td><td className="p-2 border text-center">{data.gogyo[i]}</td><td className="p-2 border">{HEALTH_ADVICE[i].part}</td><td className="p-2 border">{HEALTH_ADVICE[i].food}</td></tr>
+                ))}
+            </tbody>
+         </table>
+    </div>
+);
+
+// --- 4. メインアプリ ---
+
+export default function App() {
+  const [person1, setPerson1] = useState({ birthDate: '1975-03-31', gender: 'male', name: 'まさる' });
+  const [person2, setPerson2] = useState({ birthDate: '1980-01-01', gender: 'female', name: 'お相手' });
+  const [mode, setMode] = useState('single'); 
+  const [activeTab, setActiveTab] = useState('chart');
+  const [result1, setResult1] = useState(null);
+  const [result2, setResult2] = useState(null);
+
+  const calculateChart = (p) => {
+    const [y, m, d] = p.birthDate.split('-').map(Number);
+    // 日付バリデーション
+    if (isNaN(y) || isNaN(m) || isNaN(d)) return null;
+
+    const dayIdx = getGanshiIndex(y, m, d, 'day');
+    const dK = dayIdx % 10;
+    const dS = dayIdx % 12;
+    const yearIdx = getGanshiIndex(y, m, d, 'year');
+    const monthObj = getGanshiIndex(y, m, d, 'month');
+    
+    const zokanD = JUNISHI_DATA[dS].zokan[2] || JUNISHI_DATA[dS].zokan[0];
+    const zokanM = JUNISHI_DATA[monthObj.shi].zokan[2] || JUNISHI_DATA[monthObj.shi].zokan[0];
+    const zokanY = JUNISHI_DATA[yearIdx%12].zokan[2] || JUNISHI_DATA[yearIdx%12].zokan[0];
+    
+    const zTsuhenD = getTsuhensei(JIKKAN.indexOf(zokanD), dK);
+    const zTsuhenM = getTsuhensei(JIKKAN.indexOf(zokanM), dK);
+    
+    const taiun = calculateTaiun(y, m, d, p.gender, yearIdx % 10, monthObj.kan, monthObj.shi);
+    const kubou = getKubou(dK, dS);
+    
+    const gogyo = [0,0,0,0,0];
+    [dK, monthObj.kan, yearIdx%10].forEach(k=>gogyo[Math.floor(k/2)]++);
+    [dS, monthObj.shi, yearIdx%12].forEach(s=>gogyo[GOGYO_STR.indexOf(JUNISHI_DATA[s].gogyo)]++);
+
+    const nature = NATURE_INFO[dK] || { nature: '-', desc: '-' };
+
+    return {
+      year: { kan: yearIdx%10, shi: yearIdx%12, id: yearIdx, kanIdx: yearIdx%10, zokan: zokanY, tsuhen: getTsuhensei(yearIdx%10, dK), zokanTsuhen: getTsuhensei(JIKKAN.indexOf(zokanY), dK), jyuniun: getJyuniun(dK, yearIdx%12) },
+      month: { kan: monthObj.kan, shi: monthObj.shi, id: (monthObj.kan*10+monthObj.shi)%60, kanIdx: monthObj.kan, zokan: zokanM, tsuhen: getTsuhensei(monthObj.kan, dK), zokanTsuhen: zTsuhenM, jyuniun: getJyuniun(dK, monthObj.shi) },
+      day: { kan: dK, shi: dS, id: dayIdx, kanIdx: dK, zokan: zokanD, zokanTsuhen: zTsuhenD, jyuniun: getJyuniun(dK, dS) },
+      kubou, taiun, gogyo,
+      diagnosis: { nature: nature, mainStar: zTsuhenM, social: SOCIAL_TYPE[zTsuhenM] },
+      meta: { ...p, y, m, d }
+    };
+  };
+
+  const handleCalculate = () => {
+    const res1 = calculateChart(person1);
+    setResult1(res1);
+    if (mode === 'compatibility') {
+        const res2 = calculateChart(person2);
+        setResult2(res2);
+    } else {
+        setResult2(null);
+    }
+  };
+
+  useEffect(() => { handleCalculate(); }, []);
+
+  return (
+    <div className="min-h-screen bg-white text-gray-800 font-sans p-4 md:p-8">
+      <div className="max-w-4xl mx-auto">
+        <header className="mb-8 text-center">
+          <h1 className="text-3xl font-bold text-gray-700 mb-2 flex items-center justify-center"><Sparkles className="mr-2 text-yellow-500" />四柱推命 統合鑑定</h1>
+          <div className="flex justify-center gap-2 mt-4">
+            <button onClick={()=>{setMode('single'); setTimeout(handleCalculate,0)}} className={`px-4 py-1 rounded ${mode==='single'?'bg-gray-800 text-white':'bg-gray-200'}`}>個人鑑定</button>
+            <button onClick={()=>{setMode('compatibility'); setTimeout(handleCalculate,0)}} className={`px-4 py-1 rounded ${mode==='compatibility'?'bg-pink-500 text-white':'bg-gray-200'}`}>相性診断</button>
+          </div>
+        </header>
+
+        <div className="bg-gray-50 p-6 rounded-xl border border-gray-200 mb-10 shadow-sm">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div>
+                <label className="block text-xs font-bold text-gray-500 mb-1">あなた</label>
+                <div className="flex gap-2 mb-2"><input type="text" value={person1.name} onChange={e=>setPerson1({...person1,name:e.target.value})} className="border rounded p-2 w-1/3" /><DateSelect value={person1.birthDate} onChange={v=>setPerson1({...person1,birthDate:v})} /></div>
+                <select value={person1.gender} onChange={e=>setPerson1({...person1,gender:e.target.value})} className="border rounded p-2 w-full"><option value="male">男性</option><option value="female">女性</option></select>
+            </div>
+            {mode === 'compatibility' && (
+            <div>
+                <label className="block text-xs font-bold text-pink-500 mb-1">お相手</label>
+                <div className="flex gap-2 mb-2"><input type="text" value={person2.name} onChange={e=>setPerson2({...person2,name:e.target.value})} className="border rounded p-2 w-1/3" /><DateSelect value={person2.birthDate} onChange={v=>setPerson2({...person2,birthDate:v})} /></div>
+                <select value={person2.gender} onChange={e=>setPerson2({...person2,gender:e.target.value})} className="border rounded p-2 w-full"><option value="male">男性</option><option value="female">女性</option></select>
+            </div>
+            )}
+          </div>
+          <button onClick={handleCalculate} className="w-full bg-gray-800 text-white font-bold py-3 mt-4 rounded hover:bg-gray-700 transition flex items-center justify-center"><Search className="w-4 h-4 mr-2" /> 鑑定する</button>
+        </div>
+
+        {result1 && (
+          <div className="animate-fade-in">
+            <div className="flex border-b mb-6 overflow-x-auto">
+                <button onClick={()=>setActiveTab('chart')} className={`px-4 py-2 font-bold whitespace-nowrap ${activeTab==='chart'?'border-b-2 border-gray-800':''}`}>命式・大運</button>
+                <button onClick={()=>setActiveTab('diagnosis')} className={`px-4 py-2 font-bold whitespace-nowrap ${activeTab==='diagnosis'?'border-b-2 border-gray-800':''}`}>総合鑑定</button>
+                <button onClick={()=>setActiveTab('details')} className={`px-4 py-2 font-bold whitespace-nowrap ${activeTab==='details'?'border-b-2 border-gray-800':''}`}>年運・月運</button>
+            </div>
+
+            {activeTab === 'chart' && (
+                <div className={`grid ${mode==='compatibility'?'grid-cols-1 md:grid-cols-2 gap-8':'grid-cols-1'}`}>
+                    <div><DetailedChart data={result1} /><TaiunTable data={result1} /></div>
+                    {result2 && <div><DetailedChart data={result2} /><TaiunTable data={result2} /></div>}
+                </div>
+            )}
+            {activeTab === 'diagnosis' && (
+                <div>
+                    {mode === 'single' ? <div className="grid grid-cols-1 md:grid-cols-2 gap-6"><DiagnosisCard data={result1} /><HealthTable data={result1} /></div>
+                    : <CompatibilityReport r1={result1} r2={result2} />}
+                </div>
+            )}
+            {activeTab === 'details' && (
+                <div className={`grid ${mode==='compatibility'?'grid-cols-1 md:grid-cols-2 gap-8':'grid-cols-1'}`}>
+                    <div><h4 className="font-bold text-center bg-gray-100 py-1 mb-4">{result1.meta.name}</h4><LuckCycleTable data={result1} type="year" /><LuckCycleTable data={result1} type="month" /></div>
+                    {result2 && <div><h4 className="font-bold text-center bg-gray-100 py-1 mb-4">{result2.meta.name}</h4><LuckCycleTable data={result2} type="year" /><LuckCycleTable data={result2} type="month" /></div>}
+                </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
