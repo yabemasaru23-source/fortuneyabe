@@ -118,9 +118,43 @@ body {
     margin-top: 20px;
 }
 
+.sample-btn {
+    width: 100%;
+    padding: 12px;
+    background: linear-gradient(135deg, #4682B4 0%, #5F9EA0 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-top: 10px;
+}
+
 .submit-btn:hover {
     transform: translateY(-2px);
     box-shadow: 0 8px 25px rgba(139, 69, 19, 0.3);
+}
+
+/* サンプルボタンのスタイリング */
+.sample-btn {
+    width: 100%;
+    padding: 12px;
+    background: linear-gradient(135deg, #4682B4 0%, #5F9EA0 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-top: 10px;
+}
+
+.sample-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(70, 130, 180, 0.3);
 }
 
 /* 結果表示セクション */
@@ -190,15 +224,67 @@ body {
     padding: 15px 10px;
     text-align: center;
     font-weight: 600;
-    font-size: 1rem;
+    font-size: 1.1rem;
+    border-right: 1px solid rgba(255,255,255,0.2);
+}
+
+.four-pillars-table th:last-child {
+    border-right: none;
 }
 
 .four-pillars-table td {
-    padding: 15px 10px;
+    padding: 12px 10px;
     text-align: center;
     border-bottom: 1px solid #eee;
     font-weight: 500;
-    font-size: 0.95rem;
+    font-size: 1rem;
+    color: #333;
+    border-right: 1px solid #f0f0f0;
+}
+
+.four-pillars-table td:last-child {
+    border-right: none;
+}
+
+.four-pillars-table tr:nth-child(even) td {
+    background: #fafafa;
+}
+
+.four-pillars-table tr:hover td {
+    background: #f5f5f5;
+}
+
+/* 各行の特殊スタイリング */
+.four-pillars-table .heavenly-row td {
+    background: #fff8dc !important;
+    font-weight: 600;
+    font-size: 1.2rem;
+    color: #8B4513;
+}
+
+.four-pillars-table .earthly-row td {
+    background: #f0f8ff !important;
+    font-weight: 600;
+    font-size: 1.2rem;
+    color: #4682B4;
+}
+
+.four-pillars-table .hidden-row td {
+    background: #f5f5dc !important;
+    font-size: 0.9rem;
+    color: #666;
+}
+
+.four-pillars-table .stars-row td {
+    background: #ffe4e1 !important;
+    font-weight: 500;
+    color: #CD5C5C;
+}
+
+.four-pillars-table .stages-row td {
+    background: #e6e6fa !important;
+    font-weight: 500;
+    color: #6A5ACD;
 }
 
 .four-pillars-table tr:nth-child(even) td {

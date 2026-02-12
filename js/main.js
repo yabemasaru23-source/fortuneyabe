@@ -236,6 +236,194 @@ function resetForm() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
+// 大森さんのサンプルデータを読み込む
+function loadOmoriSample() {
+    // フォームにサンプルデータを入力
+    document.getElementById('name').value = OMORI_PERSONAL_INFO.name;
+    document.getElementById('birthDate').value = '1977-11-11';
+    document.getElementById('birthTime').value = '17:00';
+    document.getElementById('gender').value = 'male';
+    document.getElementById('birthPlace').value = '甲府付近';
+    
+    // 大森さんのデータで直接結果表示
+    displayOmoriResults();
+}
+
+// 大森さんの結果を表示
+function displayOmoriResults() {
+    // 入力セクションを非表示
+    const inputSection = document.querySelector('.input-section');
+    if (inputSection) {
+        inputSection.style.display = 'none';
+    }
+    
+    // 結果セクションを表示
+    const resultSection = document.getElementById('resultSection');
+    if (resultSection) {
+        resultSection.style.display = 'block';
+    }
+    
+    // 基本情報を表示
+    displayOmoriBasicInfo();
+    
+    // 四柱を表示
+    displayOmoriFourPillars();
+    
+    // 大運を表示
+    displayOmoriBigLuck();
+    
+    // 特殊情報を表示
+    displayOmoriSpecialInfo();
+}
+
+// 大森さんの基本情報表示
+function displayOmoriBasicInfo() {
+    const personName = document.getElementById('personName');
+    const birthInfo = document.getElementById('birthInfo');
+    
+    if (personName) {
+        personName.textContent = `${OMORI_PERSONAL_INFO.name}さんの命式`;
+    }
+    
+    if (birthInfo) {
+        birthInfo.textContent = `生年月日：${OMORI_PERSONAL_INFO.birthDate} ${OMORI_PERSONAL_INFO.birthTime} 性別：${OMORI_PERSONAL_INFO.gender === 'male' ? '男性' : '女性'} 出生地：${OMORI_PERSONAL_INFO.birthPlace}`;
+    }
+}
+
+// 大森さんの四柱表示
+function displayOmoriFourPillars() {
+    const heavenlyStemsRow = document.getElementById('heavenlyStems');
+    const earthlyBranchesRow = document.getElementById('earthlyBranches');
+    const hiddenStemsRow = document.getElementById('hiddenStems');
+    const transformationStarsRow = document.getElementById('transformationStars');
+    const lifeStagesRow = document.getElementById('lifeStages');
+    
+    // 天干の行にクラスを追加（スタイリング用）
+    if (heavenlyStemsRow) {
+        heavenlyStemsRow.className = 'heavenly-row';
+        heavenlyStemsRow.innerHTML = `
+            <td>${OMORI_FOUR_PILLARS.hour.heavenlyStem}</td>
+            <td>${OMORI_FOUR_PILLARS.day.heavenlyStem}</td>
+            <td>${OMORI_FOUR_PILLARS.month.heavenlyStem}</td>
+            <td>${OMORI_FOUR_PILLARS.year.heavenlyStem}</td>
+        `;
+    }
+    
+    // 地支の行
+    if (earthlyBranchesRow) {
+        earthlyBranchesRow.className = 'earthly-row';
+        earthlyBranchesRow.innerHTML = `
+            <td>${OMORI_FOUR_PILLARS.hour.earthlyBranch}</td>
+            <td>${OMORI_FOUR_PILLARS.day.earthlyBranch}</td>
+            <td>${OMORI_FOUR_PILLARS.month.earthlyBranch}</td>
+            <td>${OMORI_FOUR_PILLARS.year.earthlyBranch}</td>
+        `;
+    }
+    
+    if (hiddenStemsRow) {
+        hiddenStemsRow.className = 'hidden-row';
+        const hiddenHtml = Object.keys(OMORI_HIDDEN_STEMS).map(key => {
+            const hiddenData = OMORI_HIDDEN_STEMS[key];
+            return `<td>${hiddenData.hiddenStems.join('、')}</td>`;
+        }).join('');
+        hiddenStemsRow.innerHTML = hiddenHtml;
+    }
+    
+    if (transformationStarsRow) {
+        transformationStarsRow.className = 'stars-row';
+        const transformationHtml = Object.keys(OMORI_HIDDEN_STEMS).map(key => {
+            const hiddenData = OMORI_HIDDEN_STEMS[key];
+            return `<td>${hiddenData.transformationStars.join('、')}</td>`;
+        }).join('');
+        transformationStarsRow.innerHTML = transformationHtml;
+    }
+    
+    if (lifeStagesRow) {
+        lifeStagesRow.className = 'stages-row';
+        const lifeStageHtml = Object.keys(OMORI_HIDDEN_STEMS).map(key => {
+            const hiddenData = OMORI_HIDDEN_STEMS[key];
+            return `<td>${hiddenData.lifeStage}</td>`;
+        }).join('');
+        lifeStagesRow.innerHTML = lifeStageHtml;
+    }
+}
+
+// 大森さんの大運表示
+function displayOmoriBigLuck() {
+    const bigLuckBody = document.getElementById('bigLuckBody');
+    if (!bigLuckBody) return;
+    
+    bigLuckBody.innerHTML = '';
+    
+    OMORI_BIG_LUCK.forEach(luck => {
+        const row = document.createElement('tr');
+        
+        row.innerHTML = `
+            <td>${luck.age}</td>
+            <td>${luck.pillar}</td>
+            <td>${luck.transformationStar}</td>
+            <td>${luck.lifeStage}</td>
+            <td>${luck.relation}</td>
+        `;
+        
+        bigLuckBody.appendChild(row);
+    });
+}
+
+// 大森さんの特殊情報表示
+function displayOmoriSpecialInfo() {
+    const tenchuStatus = document.getElementById('tenchuStatus');
+    const monthlyKillStatus = document.getElementById('monthlyKillStatus');
+    
+    if (tenchuStatus) {
+        tenchuStatus.textContent = OMORI_SPECIAL_INFO.tenchuKilling.description;
+    }
+    
+    if (monthlyKillStatus) {
+        monthlyKillStatus.textContent = OMORI_SPECIAL_INFO.monthlyKilling.description;
+    }
+}
+
+// 大森さんのサンプルデータを読み込む
+function loadOmoriSample() {
+    // フォームにサンプルデータを入力
+    document.getElementById('name').value = OMORI_PERSONAL_INFO.name;
+    document.getElementById('birthDate').value = '1977-11-11';
+    document.getElementById('birthTime').value = '17:00';
+    document.getElementById('gender').value = 'male';
+    document.getElementById('birthPlace').value = '甲府付近';
+    
+    // 大森さんのデータで直接結果表示
+    displayOmoriResults();
+}
+
+// 大森さんの結果を表示
+function displayOmoriResults() {
+    // 入力セクションを非表示
+    const inputSection = document.querySelector('.input-section');
+    if (inputSection) {
+        inputSection.style.display = 'none';
+    }
+    
+    // 結果セクションを表示
+    const resultSection = document.getElementById('resultSection');
+    if (resultSection) {
+        resultSection.style.display = 'block';
+    }
+    
+    // 基本情報を表示
+    displayOmoriBasicInfo();
+    
+    // 四柱を表示
+    displayOmoriFourPillars();
+    
+    // 大運を表示
+    displayOmoriBigLuck();
+    
+    // 特殊情報を表示
+    displayOmoriSpecialInfo();
+}
+
 // URLパラメータをチェックして自動鑑定
 function checkUrlParameters() {
     try {

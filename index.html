@@ -50,6 +50,7 @@
                         </div>
                         
                         <button type="submit" class="submit-btn">鑑定開始</button>
+                        <button type="button" class="sample-btn" onclick="loadOmoriSample()">大森さんのサンプルデータで試す</button>
                     </form>
                 </div>
             </section>
@@ -78,23 +79,27 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr id="heavenlyStems">
+                                <tr id="heavenlyStems" class="heavenly-row">
                                     <!-- 天干が入る -->
                                 </tr>
-                                <tr id="earthlyBranches">
+                                <tr id="earthlyBranches" class="earthly-row">
                                     <!-- 地支が入る -->
                                 </tr>
-                                <tr id="hiddenStems">
+                                <tr id="hiddenStems" class="hidden-row">
                                     <!-- 蔵干が入る -->
                                 </tr>
-                                <tr id="transformationStars">
+                                <tr id="transformationStars" class="stars-row">
                                     <!-- 通変星が入る -->
                                 </tr>
-                                <tr id="lifeStages">
+                                <tr id="lifeStages" class="stages-row">
                                     <!-- 十二運星が入る -->
                                 </tr>
                             </tbody>
                         </table>
+                        <div class="chart-notes">
+                            <p class="note">天中殺：<span id="tenchuNote"></span></p>
+                            <p class="note">生月中殺：<span id="monthlyKillNote"></span></p>
+                        </div>
                     </div>
 
                     <!-- 大運表 -->
@@ -120,11 +125,7 @@
                     <div class="special-info">
                         <div class="tenchu-info">
                             <h4>天中殺</h4>
-                            <p id="tenchuStatus"></p>
-                        </div>
-                        <div class="monthly-kill-info">
-                            <h4>生月中殺</h4>
-                            <p id="monthlyKillStatus"></p>
+                            <p id="tenchuStatus">天中殺があります</p>
                         </div>
                     </div>
 
@@ -140,6 +141,7 @@
     </div>
 
     <script src="./js/fourPillarsData.js"></script>
+    <script src="./js/omoriSample.js"></script>
     <script src="./js/calculator.js"></script>
     <script src="./js/main.js"></script>
 </body>
